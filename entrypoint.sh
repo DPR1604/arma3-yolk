@@ -30,6 +30,13 @@ NC='\033[0m' # No Color
 #
 # Runs SteamCMD with specified variables and performs error handling.
 function RunSteamCMD { #[Input: int server=0 mod=1 optional_mod=2; int id]
+    # Create symlink
+    
+    if [ ! -L "./mods/" ]; then
+        echo "${CYAN}Creating symlink as it does not exist.${NC}"
+        ln -s /mods/ ./mods/
+    fi
+
     # Clear previous SteamCMD log
     if [[ -f "${STEAMCMD_LOG}" ]]; then
         rm -f "${STEAMCMD_LOG:?}"
@@ -107,31 +114,31 @@ function RunSteamCMD { #[Input: int server=0 mod=1 optional_mod=2; int id]
             if [[ $1 == 0 ]]; then # Server
                 echo -e "\n${GREEN}[UPDATE]: Game server is up to date!${NC}"
             else # Mod
-                # Move the downloaded mod to the root directory, and replace existing mod if needed
-                mkdir -p ./@$2
-                rm -rf ./@$2/*
-                mv -f ${WORKSHOP_DIR}/content/$GAME_ID/$2/* ./@$2
+                # Move the downloaded mod to the ./mods/ directory, and replace existing mod if needed
+                mkdir -p ./mods/@$2
+                rm -rf ./mods/@$2/*
+                mv -f ${WORKSHOP_DIR}/content/$GAME_ID/$2/* ./mods/@$2
                 rm -d ${WORKSHOP_DIR}/content/$GAME_ID/$2
                 # Make the mods contents all lowercase
-                ModsLowercase @$2
+                ModsLowercase ./mods/@$2
                 # Move any .bikey's to the keys directory
                 echo -e "\tMoving any mod ${CYAN}.bikey${NC} files to the ${CYAN}~/keys/${NC} folder..."
                 if [[ $1 == 1 ]]; then
-                    find ./@$2 -name "*.bikey" -type f -exec cp {} ./keys \;
+                    find ./mods/@$2 -name "*.bikey" -type f -exec cp {} ./keys \;
                 else
                     # Give optional mod keys a custom name which can be checked later for deleting unconfigured mods
-                    for file in $(find ./@$2 -name "*.bikey" -type f); do
+                    for file in $(find ./mods/@$2 -name "*.bikey" -type f); do
                         filename=$(basename ${file})
 
                         cp $file ./keys/optional_$2_${filename}
 
                     done;
 
-                    #echo -e "\tMod with ID $2 is an optional mod. Deleting original mod download folder..."
-                    #rm -r ./@$2
+                    # echo -e "\tMod with ID $2 is an optional mod. Deleting original mod download folder..."
+                    # rm -r ./mods/@$2
 
-                    # Recreate a directory so time-based detection of auto updates works correctly
-                    #mkdir ./@$2_optional
+                    # # Recreate a directory so time-based detection of auto updates works correctly
+                    # mkdir ./mods/@$2_optional
                 fi
                 echo -e "${GREEN}[UPDATE]: Mod download/update successful!${NC}"
             fi
@@ -199,7 +206,7 @@ else
     CLIENT_MODS=${MODIFICATIONS}
 fi
 if [[ -f ${MOD_FILE} ]] && [[ -n "$(cat ${MOD_FILE} | grep 'Created by Arma 3 Launcher')" ]]; then # If the mod list file exists and is valid, parse and add mods to the client-side mods list
-    CLIENT_MODS+=$(cat ${MOD_FILE} | grep 'id=' | cut -d'=' -f3 | cut -d'"' -f1 | xargs printf '@%s;')
+    CLIENT_MODS+=$(cat ${MOD_FILE} | grep 'id=' | cut -d'=' -f3 | cut -d'"' -f1 | xargs printf 'mods/@%s;')
 elif [[ -n "${MOD_FILE}" ]]; then # If MOD_FILE is not null, warn user file is missing or invalid
     echo -e "\n${YELLOW}[STARTUP_WARN]: Arma 3 Modlist file \"${CYAN}${MOD_FILE}${YELLOW}\" could not be found, or is invalid!${NC}"
     echo -e "\tEnsure your uploaded modlist's file name matches your Startup Parameter."
