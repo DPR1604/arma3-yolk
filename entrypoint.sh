@@ -30,11 +30,17 @@ NC='\033[0m' # No Color
 #
 # Runs SteamCMD with specified variables and performs error handling.
 function RunSteamCMD { #[Input: int server=0 mod=1 optional_mod=2; int id]
-    # Create symlink
-    
-    if [ ! -L "./mods/" ]; then
-        echo "${CYAN}Creating symlink as it does not exist.${NC}"
-        ln -s /mods/ ./mods/
+    # Create symlink if it doesn't exist.
+    # This is indended to be used with the mounts in the panel.
+    if [ ! -e "./mods" ]; then
+        echo -e "${CYAN}Creating symlink ./mods -> /mods as it does not exist.${NC}\n"
+        if [ ! -d "/mods" ]; then
+            echo -e "${RED}/mods does not exist, ensure this is mounted.${NC}\n"
+            echo -e "${RED}Alternatively, to skip using mounted mods, create the directory ./mods${NC}\n"
+            exit 1
+        fi
+        # ln -s /mods/ ./mods || exit 1
+        ln -s /mods/ ./mods
     fi
 
     # Clear previous SteamCMD log
@@ -117,7 +123,8 @@ function RunSteamCMD { #[Input: int server=0 mod=1 optional_mod=2; int id]
                 # Move the downloaded mod to the ./mods/ directory, and replace existing mod if needed
                 mkdir -p ./mods/@$2
                 rm -rf ./mods/@$2/*
-                mv -f ${WORKSHOP_DIR}/content/$GAME_ID/$2/* ./mods/@$2
+                # Using `find` so spaces in path will not explode.
+                find "${WORKSHOP_DIR}/content/$GAME_ID/$2" -mindepth 1 -maxdepth 1 -name '*' -exec mv -f "{}" "./mods/@$2/" \;
                 rm -d ${WORKSHOP_DIR}/content/$GAME_ID/$2
                 # Make the mods contents all lowercase
                 ModsLowercase ./mods/@$2
@@ -161,7 +168,8 @@ function RunSteamCMD { #[Input: int server=0 mod=1 optional_mod=2; int id]
 # Takes a directory (string) as input, and recursively makes all files & folders lowercase.
 function ModsLowercase {
     echo -e "\n\tMaking mod ${CYAN}$1${NC} files/folders lowercase..."
-    for SRC in `find ./$1 -depth`
+    IFS=$'\n'
+    for SRC in `find "./${1}" -depth`
     do
         DST=`dirname "${SRC}"`/`basename "${SRC}" | tr '[A-Z]' '[a-z]'`
         if [ "${SRC}" != "${DST}" ]
@@ -169,6 +177,7 @@ function ModsLowercase {
             [ ! -e "${DST}" ] && mv -T "${SRC}" "${DST}"
         fi
     done
+    unset IFS
 }
 
 # Removes duplicate items from a semicolon delimited string
@@ -262,7 +271,7 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
     ## Update mods
     if [[ -n $allMods ]] && [[ ${DISABLE_MOD_UPDATES} != 1 ]]; then
         echo -e "\n${GREEN}[UPDATE]:${NC} Checking all ${CYAN}Steam Workshop mods${NC} for updates..."
-        for modID in $(echo $allMods | sed -e 's/@//g')
+        for modID in $(echo $allMods | sed -e 's/[^@ ]*@//g')
         do
             if [[ $modID =~ ^[0-9]+$ ]]; then # Only check mods that are in ID-form
                 # If a mod is defined in OPTIONALMODS, and is not defined in CLIENT_MODS or SERVERMODS, then treat as an optional mod
@@ -270,10 +279,10 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                 # if an optional mod is switched to be a standard client-side mod, this script will redownload the mod
                 if [[ "${OPTIONALMODS}" == *"@${modID};"* ]] && [[ "${CLIENT_MODS}" != *"@${modID};"* ]] && [[ "${SERVERMODS}" != *"@${modID};"* ]]; then
                     modType=2
-                    modDir=@${modID}_optional
+                    modDir=./mods/@${modID}_optional
                 else
                     modType=1
-                    modDir=@${modID}
+                    modDir=./mods/@${modID}
                 fi
 
                 # Get mod's latest update in epoch time from its Steam Workshop changelog page
