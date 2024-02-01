@@ -39,8 +39,7 @@ function RunSteamCMD { #[Input: int server=0 mod=1 optional_mod=2; int id]
             echo -e "${RED}Alternatively, to skip using mounted mods, create the directory ./mods${NC}\n"
             exit 1
         fi
-        # ln -s /mods/ ./mods || exit 1
-        ln -s /mods/ ./mods
+        ln /mods/ ./mods || exit 1
     fi
 
     # Clear previous SteamCMD log
