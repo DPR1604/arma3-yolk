@@ -279,11 +279,11 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                 # if an optional mod is switched to be a standard client-side mod, this script will redownload the mod
                 if [[ "${OPTIONALMODS}" == *"@${modID};"* ]] && [[ "${CLIENT_MODS}" != *"@${modID};"* ]] && [[ "${SERVERMODS}" != *"@${modID};"* ]]; then
                     modType=2
-                    modDir=./mods/@${modID}_optional
                 else
                     modType=1
-                    modDir=./mods/@${modID}
                 fi
+
+                modDir=./mods/@${modID}
 
                 # Get mod's latest update in epoch time from its Steam Workshop changelog page
                 latestUpdate=$(curl -sL https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID | grep '<p id=' | head -1 | cut -d'"' -f2)
@@ -330,12 +330,11 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                     # We only need to let the user know the key file is being deleted if this mod is no longer configured at all.
                     # If CLIENT_MODS contains the mod ID, we'd just confuse the user by telling them we are deleting the optional .bikey file
                     if [[ "${CLIENT_MODS}" != *"@${modID};"* ]]; then
-                        echo -e "\tKey file and directory for unconfigured optional mod ${CYAN}${modID}${NC} is being deleted..."
+                        echo -e "\tKey file for unconfigured optional mod ${CYAN}${modID}${NC} is being deleted..."
                     fi
 
-                    # Delete the optional mod .bikey file and directory
+                    # Delete the optional mod .bikey file
                     rm ${keyFile}
-                    rmdir ./@${modID}_optional 2> /dev/null
                 fi
             fi
         done;
