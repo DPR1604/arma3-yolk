@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Default logging to server profile dir doesn't work correctly, it gets cut off.
+# So, just put the entirety of this script's output into a file.
+exec &> >(tee console.log)
+
 ## File: Pterodactyl Arma 3 Image - entrypoint.sh
 ## Author: David Wolfe (Red-Thirten)
 ## Contributors: Aussie Server Hosts (https://aussieserverhosts.com/), Stephen White (SilK)
