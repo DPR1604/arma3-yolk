@@ -318,6 +318,15 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
             fi
         done
 
+        # Ensure mod keys are up to date
+        for keyFile in $(find ./mods -name "*.bikey" -type f); do
+            keyFileName=$(basename ${keyFile})
+            
+            if [ ! -f ./keys/$keyFileName ]; then
+                echo "\n${YELLO}[UPDATE]:${NC} Copying missing keyfile."
+                cp $keyFile ./keys
+            fi
+        done
         # Check over key files for unconfigured optional mods' .bikey files
         for keyFile in $(find ./keys -name "*.bikey" -type f); do
             keyFileName=$(basename ${keyFile})
