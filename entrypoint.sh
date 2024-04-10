@@ -318,7 +318,7 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                 # Not A graceful solution but because we mount a shared folder for mods
                 # The update mechanism was not moving the keys on all of the servers
                 # This ensures that happens
-                for keyFile in $(find $modDir -name "*.bikey" -type f)
+                for keyFile in $(find $modDir -name "*.bikey" -type f); do
                     keyFileName=$(basename ${keyFile})
                     if [ ! -f "./keys/$keyFileName" ]; then # Checks if the file is present in the keys dir
                         echo -e "\n${GREEN}[UPDATE]:${NC} Copying missing keyfile."
