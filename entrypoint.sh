@@ -321,11 +321,11 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                 for keyFile in $(find $modDir -name "*.bikey" -type f); do
                     keyFileName=$(basename ${keyFile})
                     if [ ! -f "./keys/$keyFileName" ]; then # Checks if the file is present in the keys dir
-                        echo -e "\n${GREEN}[UPDATE]:${NC} Copying missing keyfile."
+                        echo -e "\n${GREEN}[UPDATE]:${NC} Copying missing keyfile for $modID."
                         cp "$keyFile" ./keys
 
                     elif [ "$keyFile" -nt "./keys/$keyFileName" ]; then # Checks if the key file in the mods dir in newer then the one in keys for mods that dont version their key
-                        echo -e "\n${GREEN}[UPDATE]:${NC} Updating keyfile."
+                        echo -e "\n${GREEN}[UPDATE]:${NC} Updating keyfile for $modID."
                         cp "$keyFile" ./keys
                     fi
                 done
