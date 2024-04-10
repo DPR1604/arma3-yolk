@@ -319,6 +319,7 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
         done
 
         # Ensure mod keys are up to date
+        echo "\n${GREEN}[UPDATE]:${NC} Checking for missing keyfiles" 
         for keyFile in $(find ./mods -name "*.bikey" -type f); do
             keyFileName=$(basename ${keyFile})
             
