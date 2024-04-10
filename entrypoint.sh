@@ -320,7 +320,7 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
 
         set -x
         ls -la
-        ls -la ./mods
+        ls -la ./mods/
         # Ensure mod keys are up to date
         echo -e "\n${GREEN}[UPDATE]:${NC} Checking for missing keyfiles" 
         for keyFile in $(find ./mods -name "*.bikey" -type f); do
