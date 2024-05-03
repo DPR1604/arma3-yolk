@@ -315,6 +315,20 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                     echo -e "\tAttempting mod update/download via SteamCMD...\n"
                     RunSteamCMD $modType $modID
                 fi
+                # Not A graceful solution but because we mount a shared folder for mods
+                # The update mechanism was not moving the keys on all of the servers
+                # This ensures that happens
+                for keyFile in $(find $modDir -name "*.bikey" -type f); do
+                    keyFileName=$(basename ${keyFile})
+                    if [ ! -f "./keys/$keyFileName" ]; then # Checks if the file is present in the keys dir
+                        echo -e "\n${GREEN}[UPDATE]:${NC} Copying missing keyfile for $modID."
+                        cp "$keyFile" ./keys
+
+                    elif [ "$keyFile" -nt "./keys/$keyFileName" ]; then # Checks if the key file in the mods dir in newer then the one in keys for mods that dont version their key
+                        echo -e "\n${GREEN}[UPDATE]:${NC} Updating keyfile for $modID."
+                        cp "$keyFile" ./keys
+                    fi
+                done
             fi
         done
 
