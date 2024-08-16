@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -x
 # Default logging to server profile dir doesn't work correctly, it gets cut off.
 # So, just put the entirety of this script's output into a file.
 exec &> >(tee console.log)
