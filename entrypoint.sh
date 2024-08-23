@@ -34,17 +34,17 @@ NC='\033[0m' # No Color
 #
 # Runs SteamCMD with specified variables and performs error handling.
 function RunSteamCMD { #[Input: int server=0 mod=1 optional_mod=2; int id]
-    # Create hardlink if it doesn't exist.
-    # A hardlink must be used for arma3 to load the mods, as it will not load if it's knows the mods are located in a directory below it.
+    # Create symbolic link if it doesn't exist.
+    # A symbolic must be used for arma3 to load the mods, as it will not load if it's knows the mods are located in a directory below it.
     # This is indended to be used with the mounts in the panel.
     if [ ! -e "./mods" ]; then
-        echo -e "${CYAN}Creating hardlink ./mods -> /mods as it does not exist.${NC}\n"
+        echo -e "${CYAN}Creating symlink ./mods -> /mods as it does not exist.${NC}\n"
         if [ ! -d "/mods" ]; then
             echo -e "${RED}/mods does not exist, ensure this is mounted.${NC}\n"
             echo -e "${RED}Alternatively, to skip using mounted mods, create the directory ./mods${NC}\n"
             exit 1
         fi
-        ln /mods/ ./mods || exit 1
+        ln -s /mods/ ./mods || exit 1
     fi
 
     # Clear previous SteamCMD log
