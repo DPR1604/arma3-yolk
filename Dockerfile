@@ -18,6 +18,7 @@ RUN         dpkg --add-architecture i386 \
                 gettext-base \
                 ca-certificates \
                 numactl \
+                libcurl3-gnutls:i386 \
                 libssl-dev \
                 lib32gcc-s1 \
                 libsdl2-2.0-0 \
