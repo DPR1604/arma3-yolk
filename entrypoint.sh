@@ -290,15 +290,23 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                 modDir=./mods/@${modID}
 
                 # Get mod's latest update in epoch time from its Steam Workshop changelog page
-                latestUpdate=$(curl -sL --compressed https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID | grep '<p id=' | head -1 | cut -d'"' -f2)
+                changelogPage=$(curl -sL --compressed https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID)
+
+                latestUpdate=$(echo "$changelogPage" | grep '<p id=' | head -1 | cut -d'"' -f2)
+                if ! [[ ($latestUpdate =~ ^[0-9]+$) ]]; then # Just update if we failed to retrieve
+                    echo -e "\n${GREEN}[UPDATE]:${NC} ${RED}Failed to get last updated time for ${CYAN}${modID}${RED}.${NC}"
+                    if [[ $WORKSHOP_UPDATE_NODATA == 1 ]]; then
+                        latestUpdate=0
+                    fi
+                fi
+
+                modName=$(echo "$changelogPage" | grep 'workshopItemTitle' | cut -d'>' -f2 | cut -d'<' -f1)
+                if [[ -z $modName ]]; then # Set default name if unavailable
+                    modName="[NAME UNAVAILABLE]"
+                fi
 
                 # If the update time is valid and newer than the local directory's creation date, or the mod hasn't been downloaded yet, download the mod
                 if [[ ! -d $modDir ]] || [[ ( -n $latestUpdate ) && ( $latestUpdate =~ ^[0-9]+$ ) && ( $latestUpdate > $(find $modDir | head -1 | xargs stat -c%Y) ) ]]; then
-                    # Get the mod's name from the Workshop page as well
-                    modName=$(curl -sL --compressed https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID | grep 'workshopItemTitle' | cut -d'>' -f2 | cut -d'<' -f1)
-                    if [[ -z $modName ]]; then # Set default name if unavailable
-                        modName="[NAME UNAVAILABLE]"
-                    fi
                     if [[ ! -d $modDir ]]; then
                         echo -e "\n${GREEN}[UPDATE]:${NC} Downloading new Mod: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
                     else
