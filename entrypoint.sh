@@ -293,9 +293,9 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                 changelogPage=$(curl -sL --compressed https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID)
 
                 latestUpdate=$(echo "$changelogPage" | grep '<p id=' | head -1 | cut -d'"' -f2)
-                if ! [[ ($latestUpdate =~ ^[0-9]+$) ]]; then # Just update if we failed to retrieve
-                    echo -e "\n${GREEN}[UPDATE]:${NC} ${RED}Failed to get last updated time for ${CYAN}${modID}${RED}.${NC}"
-                    if [[ $WORKSHOP_UPDATE_NODATA == 1 ]]; then
+                if ! [[ ($latestUpdate =~ ^[0-9]+$) ]]; then
+                    echo -e "\n${GREEN}[UPDATE]:${NC} ${RED}Failed to get last updated time for ${CYAN}${modID}${NC}"
+                    if [[ ${WORKSHOP_UPDATE_BAD_CHECK} == "1" ]]; then
                         latestUpdate=0
                     fi
                 fi
@@ -322,6 +322,8 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                     
                     echo -e "\tAttempting mod update/download via SteamCMD...\n"
                     RunSteamCMD $modType $modID
+                else
+                    echo -e "\n${GREEN}[UPDATE]:${NC} Mod is up-to-date: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
                 fi
                 # Not A graceful solution but because we mount a shared folder for mods
                 # The update mechanism was not moving the keys on all of the servers
