@@ -301,15 +301,15 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                         break
                     fi
                     
-                    # We didn't get the last update time, so either give up or try again in 30s
+                    # We didn't get the last update time, so either give up or try again after sleeping for WORKSHOP_BAD_CHECK_WAIT_TIME.
                     # It's likely we were rate limited.
                     if (( workshop_check_attempts >= WORKSHOP_BAD_CHECK_WAIT_ATTEMPTS )); then
                         echo -e "\n${RED}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${NC}"
                         break
                     fi
                     ((workshop_check_attempts++))
-                    echo -e "\n${YELLOW}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${YELLOW}, trying again in 30 seconds. (${workshop_check_attempts}/${WORKSHOP_BAD_CHECK_WAIT_ATTEMPTS})${NC}"
-                    sleep 1m
+                    echo -e "\n${YELLOW}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${YELLOW}, trying again in ${WORKSHOP_BAD_CHECK_WAIT_TIME}. (${workshop_check_attempts}/${WORKSHOP_BAD_CHECK_WAIT_ATTEMPTS})${NC}"
+                    sleep ${WORKSHOP_BAD_CHECK_WAIT_TIME}
                 done
                 if ! [[ ($latestUpdate =~ ^[0-9]+$) ]] && [[ ${WORKSHOP_BAD_CHECK_UPDATE} == "1" ]]; then
                     latestUpdate=253392484149  # Year 9999
