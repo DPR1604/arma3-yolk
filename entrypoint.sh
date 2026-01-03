@@ -289,8 +289,6 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
 
                 modDir=./mods/@${modID}
 
-                workshop_check_attempts=0
-                
                 # Get mod's Steam Workshop changelog page.
                 workshop_check_attempts=0
                 while (( 1 )); do
@@ -310,8 +308,8 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                         break
                     fi
                     ((workshop_check_attempts++))
-                    echo -e "\n${YELLOW}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${YELLOW}, trying again in 30 seconds.${NC}"
-                    sleep 30s
+                    echo -e "\n${YELLOW}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${YELLOW}, trying again in 30 seconds. (${workshop_check_attempts}/${WORKSHOP_BAD_CHECK_WAIT_ATTEMPTS})${NC}"
+                    sleep 1m
                 done
                 if ! [[ ($latestUpdate =~ ^[0-9]+$) ]] && [[ ${WORKSHOP_BAD_CHECK_UPDATE} == "1" ]]; then
                     latestUpdate=253392484149  # Year 9999
