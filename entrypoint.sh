@@ -289,16 +289,39 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
 
                 modDir=./mods/@${modID}
 
-                # Get mod's latest update in epoch time from its Steam Workshop changelog page
-                latestUpdate=$(curl -sL https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID | grep '<p id=' | head -1 | cut -d'"' -f2)
+                # Get mod's Steam Workshop changelog page.
+                workshop_check_attempts=0
+                while (( 1 )); do
+                    changelogPage=$(curl -sL --compressed https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID)
+
+                    # Try extract time of last update
+                    latestUpdate=$(echo "$changelogPage" | grep '<p id=' | head -1 | cut -d'"' -f2)
+                    if [[ ($latestUpdate =~ ^[0-9]+$) ]]; then
+                        # We got it, so break the loop.
+                        break
+                    fi
+                    
+                    # We didn't get the last update time, so either give up or try again after sleeping for WORKSHOP_BAD_CHECK_WAIT_TIME.
+                    # It's likely we were rate limited.
+                    if (( workshop_check_attempts >= WORKSHOP_BAD_CHECK_WAIT_ATTEMPTS )); then
+                        echo -e "\n${RED}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${NC}"
+                        break
+                    fi
+                    ((workshop_check_attempts++))
+                    echo -e "\n${YELLOW}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${YELLOW}, trying again in ${WORKSHOP_BAD_CHECK_WAIT_TIME}. (${workshop_check_attempts}/${WORKSHOP_BAD_CHECK_WAIT_ATTEMPTS})${NC}"
+                    sleep ${WORKSHOP_BAD_CHECK_WAIT_TIME}
+                done
+                if ! [[ ($latestUpdate =~ ^[0-9]+$) ]] && [[ ${WORKSHOP_BAD_CHECK_UPDATE} == "1" ]]; then
+                    latestUpdate=253392484149  # Year 9999
+                fi
+
+                modName=$(echo "$changelogPage" | grep 'workshopItemTitle' | cut -d'>' -f2 | cut -d'<' -f1)
+                if [[ -z $modName ]]; then # Set default name if unavailable
+                    modName="[NAME UNAVAILABLE]"
+                fi
 
                 # If the update time is valid and newer than the local directory's creation date, or the mod hasn't been downloaded yet, download the mod
                 if [[ ! -d $modDir ]] || [[ ( -n $latestUpdate ) && ( $latestUpdate =~ ^[0-9]+$ ) && ( $latestUpdate > $(find $modDir | head -1 | xargs stat -c%Y) ) ]]; then
-                    # Get the mod's name from the Workshop page as well
-                    modName=$(curl -sL https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID | grep 'workshopItemTitle' | cut -d'>' -f2 | cut -d'<' -f1)
-                    if [[ -z $modName ]]; then # Set default name if unavailable
-                        modName="[NAME UNAVAILABLE]"
-                    fi
                     if [[ ! -d $modDir ]]; then
                         echo -e "\n${GREEN}[UPDATE]:${NC} Downloading new Mod: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
                     else
@@ -314,6 +337,8 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                     
                     echo -e "\tAttempting mod update/download via SteamCMD...\n"
                     RunSteamCMD $modType $modID
+                else
+                    echo -e "\n${GREEN}[UPDATE]:${NC} Mod is up-to-date: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
                 fi
                 # Not A graceful solution but because we mount a shared folder for mods
                 # The update mechanism was not moving the keys on all of the servers
