@@ -289,15 +289,32 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
 
                 modDir=./mods/@${modID}
 
-                # Get mod's latest update in epoch time from its Steam Workshop changelog page
-                changelogPage=$(curl -sL --compressed https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID)
+                workshop_check_attempts=0
+                
+                # Get mod's Steam Workshop changelog page.
+                workshop_check_attempts=0
+                while (( 1 )); do
+                    changelogPage=$(curl -sL --compressed https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID)
 
-                latestUpdate=$(echo "$changelogPage" | grep '<p id=' | head -1 | cut -d'"' -f2)
-                if ! [[ ($latestUpdate =~ ^[0-9]+$) ]]; then
-                    echo -e "\n${GREEN}[UPDATE]:${NC} ${RED}Failed to get last updated time for ${CYAN}${modID}${NC}"
-                    if [[ ${WORKSHOP_UPDATE_BAD_CHECK} == "1" ]]; then
-                        latestUpdate=0
+                    # Try extract time of last update
+                    latestUpdate=$(echo "$changelogPage" | grep '<p id=' | head -1 | cut -d'"' -f2)
+                    if [[ ($latestUpdate =~ ^[0-9]+$) ]]; then
+                        # We got it, so break the loop.
+                        break
                     fi
+                    
+                    # We didn't get the last update time, so either give up or try again in 30s
+                    # It's likely we were rate limited.
+                    if (( workshop_check_attempts >= WORKSHOP_BAD_CHECK_WAIT_ATTEMPTS )); then
+                        echo -e "\n${RED}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${NC}"
+                        break
+                    fi
+                    ((workshop_check_attempts++))
+                    echo -e "\n${YELLOW}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${YELLOW}, trying again in 30 seconds.${NC}"
+                    sleep 30s
+                done
+                if [[ ${WORKSHOP_BAD_CHECK_UPDATE} == "1" ]]; then
+                    latestUpdate=72057594037927936  # Something huge
                 fi
 
                 modName=$(echo "$changelogPage" | grep 'workshopItemTitle' | cut -d'>' -f2 | cut -d'<' -f1)
