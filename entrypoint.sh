@@ -313,8 +313,8 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
                     echo -e "\n${YELLOW}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${YELLOW}, trying again in 30 seconds.${NC}"
                     sleep 30s
                 done
-                if [[ ${WORKSHOP_BAD_CHECK_UPDATE} == "1" ]]; then
-                    latestUpdate=72057594037927936  # Something huge
+                if ! [[ ($latestUpdate =~ ^[0-9]+$) ]] && [[ ${WORKSHOP_BAD_CHECK_UPDATE} == "1" ]]; then
+                    latestUpdate=253392484149  # Year 9999
                 fi
 
                 modName=$(echo "$changelogPage" | grep 'workshopItemTitle' | cut -d'>' -f2 | cut -d'<' -f1)
