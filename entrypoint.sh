@@ -38,7 +38,7 @@ NC='\033[0m' # No Color
 # STARTUP, STARTUP_PARAMS, STEAM_USER, STEAM_PASS, SERVER_BINARY, MOD_FILE, MODIFICATIONS, SERVERMODS, OPTIONALMODS, UPDATE_SERVER, CLEAR_CACHE, VALIDATE_SERVER, MODS_LOWERCASE, STEAMCMD_EXTRA_FLAGS, CDLC, STEAMCMD_APPID, HC_NUM, SERVER_PASSWORD, HC_HIDE, STEAMCMD_ATTEMPTS, BASIC_URL, DISABLE_MOD_UPDATES
 
 ## === GLOBAL VARS ===
-# validateServer, extraFlags, updateAttempt, modifiedStartup, allMods, CLIENT_MODS
+# validateServer, extraFlags, updateAttempt, modifiedStartup, allMods, allModIds, CLIENT_MODS
 
 ## === DEFINE FUNCTIONS ===
 #
@@ -252,6 +252,7 @@ allMods+=$CLIENT_MODS # Add all client-side mods to the master mod list
 CLIENT_MODS=$(RemoveDuplicates ${CLIENT_MODS}) # Remove duplicate mods from CLIENT_MODS, if present
 allMods=$(RemoveDuplicates ${allMods}) # Remove duplicate mods from allMods, if present
 allMods=$(echo $allMods | sed -e 's/;/ /g') # Convert from string to array
+allModIds=$(echo $allMods | sed -e 's/[^@ ]*@/\n/g' | sort -u)
 
 # Update everything (server and mods), if specified
 if [[ ${UPDATE_SERVER} == 1 ]]; then
@@ -289,7 +290,7 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
         # Use the steam web api to grab all the workshop details in one go.
         workshop_count=0
         workshop_data_args=
-        for modID in $(echo $allMods | sed -e 's/[^@ ]*@//g')
+        for modID in $allModIds
         do
             if [[ $modID =~ ^[0-9]+$ ]]; then
                 workshop_data_args+="-d publishedfileids[$workshop_count]=$modID "
@@ -302,8 +303,8 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
         if [[ $(echo "$workshop_data_cmd_response" | jq -r '.response.result') != 1 ]]; then
             echo -e "\n${RED}[UPDATE]: Failed to obtain workshop details from steam web api, skipping update checks!${NC}"
         else
-	        echo -e "${GREEN}[UPDATE]:${NC} Obtained workshop details via steam web  api...\n"
-            for modID in $(echo $allMods | sed -e 's/[^@ ]*@//g')
+	        echo -e "${GREEN}[UPDATE]:${NC} Obtained workshop details via steam web api...\n"
+            for modID in $allModIds
             do
                 if [[ $modID =~ ^[0-9]+$ ]]; then # Only check mods that are in ID-form
                     workshop_data=$(echo "$workshop_data_cmd_response" | jq -r ".response.publishedfiledetails[] | select(.publishedfileid==\"$modID\")")
