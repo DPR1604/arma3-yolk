@@ -1,8 +1,18 @@
 #!/bin/bash
 
+MAXLOGS=3  # Min of 2
+# Move current log to have a number
+mv console.log console.log.0
+# Move numbered logs from 0 to MAXLOGS-2 in reverse order.
+# This will overwrite the oldest log with the 2nd oldest.
+for i in `seq $((MAXLOGS-2)) -1 0`; do  # -2 as we use +1 below
+    mv "console.log."{$i,$((i+1))} &> /dev/null
+done
+
 # Default logging to server profile dir doesn't work correctly, it gets cut off.
 # So, just put the entirety of this script's output into a file.
-exec &> >(tee console.log)
+# Redirect all output to console and to file, removing ascii colors only for the file.
+exec &> >(tee >(sed -e 's/\[[0-9]\+\(;[0-9]\+\)\?m//g' > console.log))
 
 ## File: Pterodactyl Arma 3 Image - entrypoint.sh
 ## Author: David Wolfe (Red-Thirten)
