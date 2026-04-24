@@ -12,6 +12,7 @@ RUN         dpkg --add-architecture i386 \
             && apt-get upgrade -y \
             && apt-get install -y \
                 curl \
+                jq \
                 tzdata \
                 locales \
                 iproute2 \

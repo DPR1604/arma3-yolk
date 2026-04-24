@@ -285,87 +285,83 @@ if [[ ${UPDATE_SERVER} == 1 ]]; then
     ## Update mods
     if [[ -n $allMods ]] && [[ ${DISABLE_MOD_UPDATES} != 1 ]]; then
         echo -e "\n${GREEN}[UPDATE]:${NC} Checking all ${CYAN}Steam Workshop mods${NC} for updates..."
+
+        # Use the steam web api to grab all the workshop details in one go.
+        workshop_count=0
+        workshop_data_args=
         for modID in $(echo $allMods | sed -e 's/[^@ ]*@//g')
         do
-            if [[ $modID =~ ^[0-9]+$ ]]; then # Only check mods that are in ID-form
-                # If a mod is defined in OPTIONALMODS, and is not defined in CLIENT_MODS or SERVERMODS, then treat as an optional mod
-                # Optional mods are given a different directory which is checked to see if a new update is available. This is to ensure
-                # if an optional mod is switched to be a standard client-side mod, this script will redownload the mod
-                if [[ "${OPTIONALMODS}" == *"@${modID};"* ]] && [[ "${CLIENT_MODS}" != *"@${modID};"* ]] && [[ "${SERVERMODS}" != *"@${modID};"* ]]; then
-                    modType=2
-                else
-                    modType=1
-                fi
-
-                modDir=./mods/@${modID}
-
-                # Get mod's Steam Workshop changelog page.
-                workshop_check_attempts=0
-                while (( 1 )); do
-                    changelogPage=$(curl -sL --compressed https://steamcommunity.com/sharedfiles/filedetails/changelog/$modID)
-
-                    # Try extract time of last update
-                    latestUpdate=$(echo "$changelogPage" | grep '<p id=' | head -1 | cut -d'"' -f2)
-                    if [[ ($latestUpdate =~ ^[0-9]+$) ]]; then
-                        # We got it, so break the loop.
-                        break
-                    fi
-                    
-                    # We didn't get the last update time, so either give up or try again after sleeping for WORKSHOP_BAD_CHECK_WAIT_TIME.
-                    # It's likely we were rate limited.
-                    if (( workshop_check_attempts >= WORKSHOP_BAD_CHECK_WAIT_ATTEMPTS )); then
-                        echo -e "\n${RED}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${NC}"
-                        break
-                    fi
-                    ((workshop_check_attempts++))
-                    echo -e "\n${YELLOW}[UPDATE]: Failed to get last updated time for ${CYAN}${modID}${YELLOW}, trying again in ${WORKSHOP_BAD_CHECK_WAIT_TIME}. (${workshop_check_attempts}/${WORKSHOP_BAD_CHECK_WAIT_ATTEMPTS})${NC}"
-                    sleep ${WORKSHOP_BAD_CHECK_WAIT_TIME}
-                done
-                if ! [[ ($latestUpdate =~ ^[0-9]+$) ]] && [[ ${WORKSHOP_BAD_CHECK_UPDATE} == "1" ]]; then
-                    latestUpdate=253392484149  # Year 9999
-                fi
-
-                modName=$(echo "$changelogPage" | grep 'workshopItemTitle' | cut -d'>' -f2 | cut -d'<' -f1)
-                if [[ -z $modName ]]; then # Set default name if unavailable
-                    modName="[NAME UNAVAILABLE]"
-                fi
-
-                # If the update time is valid and newer than the local directory's creation date, or the mod hasn't been downloaded yet, download the mod
-                if [[ ! -d $modDir ]] || [[ ( -n $latestUpdate ) && ( $latestUpdate =~ ^[0-9]+$ ) && ( $latestUpdate > $(find $modDir | head -1 | xargs stat -c%Y) ) ]]; then
-                    if [[ ! -d $modDir ]]; then
-                        echo -e "\n${GREEN}[UPDATE]:${NC} Downloading new Mod: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
-                    else
-                        echo -e "\n${GREEN}[UPDATE]:${NC} Mod update found for: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
-                    fi
-                    if [[ -n $latestUpdate ]] && [[ $latestUpdate =~ ^[0-9]+$ ]]; then # Notify last update date, if valid
-                        echo -e "\tMod was last updated: ${CYAN}$(date -d @${latestUpdate})${NC}"
-                    fi
-                    
-                    # Delete SteamCMD appworkshop cache before running to avoid mod download failures
-                    echo -e "\tClearing SteamCMD appworkshop cache..."
-                    rm -f ${WORKSHOP_DIR}/appworkshop_$GAME_ID.acf
-                    
-                    echo -e "\tAttempting mod update/download via SteamCMD...\n"
-                    RunSteamCMD $modType $modID
-                else
-                    echo -e "\n${GREEN}[UPDATE]:${NC} Mod is up-to-date: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
-                fi
-                # Not A graceful solution but because we mount a shared folder for mods
-                # The update mechanism was not moving the keys on all of the servers
-                # This ensures that happens
-                for keyFile in $(find $modDir -name "*.bikey" -type f); do
-                    keyFileName=$(basename ${keyFile})
-                    if [ ! -f "./keys/$keyFileName" ]; then # Checks if the file is present in the keys dir
-                        echo -e "\n${GREEN}[UPDATE]:${NC} Copying missing keyfile for $modID."
-                        cp "$keyFile" ./keys
-
-                    elif [ "$keyFile" -nt "./keys/$keyFileName" ]; then # Checks if the key file in the mods dir in newer then the one in keys for mods that dont version their key
-                        echo -e "\n${GREEN}[UPDATE]:${NC} Updating keyfile for $modID."
-                        cp "$keyFile" ./keys
-                    fi
-                done
+            if [[ $modID =~ ^[0-9]+$ ]]; then
+                workshop_data_args+="-d publishedfileids[$workshop_count]=$modID "
+                workshop_count=$((workshop_count + 1))
             fi
         done
+        workshop_data_cmd="curl --silent --request POST -d itemcount=$workshop_count $workshop_data_args https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
+        workshop_data_cmd_response=$($workshop_data_cmd)
+
+        if [[ $(echo "$workshop_data_cmd_response" | jq -r '.response.result') != 1 ]]; then
+            echo -e "\n${RED}[UPDATE]: Failed to obtain workshop details from steam web api, skipping update checks!${NC}"
+        else
+	        echo -e "${GREEN}[UPDATE]:${NC} Obtained workshop details via steam web  api...\n"
+            for modID in $(echo $allMods | sed -e 's/[^@ ]*@//g')
+            do
+                if [[ $modID =~ ^[0-9]+$ ]]; then # Only check mods that are in ID-form
+                    workshop_data=$(echo "$workshop_data_cmd_response" | jq -r ".response.publishedfiledetails[] | select(.publishedfileid==\"$modID\")")
+                    if [[ $workshop_data == "null" ]]; then
+                        echo -e "\n${RED}[UPDATE]: Failed to get workshop details for ${CYAN}${modID}${NC}, it will be skipped!"
+                        continue
+                    fi
+                    modName=$(echo "$workshop_data" | jq -r ".title")
+                    latestUpdate=$(echo "$workshop_data" | jq -r ".time_updated")
+                    
+                    # If a mod is defined in OPTIONALMODS, and is not defined in CLIENT_MODS or SERVERMODS, then treat as an optional mod
+                    # Optional mods are given a different directory which is checked to see if a new update is available. This is to ensure
+                    # if an optional mod is switched to be a standard client-side mod, this script will redownload the mod
+                    if [[ "${OPTIONALMODS}" == *"@${modID};"* ]] && [[ "${CLIENT_MODS}" != *"@${modID};"* ]] && [[ "${SERVERMODS}" != *"@${modID};"* ]]; then
+                        modType=2
+                    else
+                        modType=1
+                    fi
+
+                    modDir=./mods/@${modID}
+
+                    # If the update time is valid and newer than the local directory's creation date, or the mod hasn't been downloaded yet, download the mod
+                    if [[ ! -d $modDir ]] || [[ ( -n $latestUpdate ) && ( $latestUpdate =~ ^[0-9]+$ ) && ( $latestUpdate > $(find $modDir | head -1 | xargs stat -c%Y) ) ]]; then
+                        if [[ ! -d $modDir ]]; then
+                            echo -e "\n${GREEN}[UPDATE]:${NC} Downloading new Mod: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
+                        else
+                            echo -e "\n${GREEN}[UPDATE]:${NC} Mod update found for: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
+                        fi
+                        if [[ -n $latestUpdate ]] && [[ $latestUpdate =~ ^[0-9]+$ ]]; then # Notify last update date, if valid
+                            echo -e "\tMod was last updated: ${CYAN}$(date -d @${latestUpdate})${NC}"
+                        fi
+                        
+                        # Delete SteamCMD appworkshop cache before running to avoid mod download failures
+                        echo -e "\tClearing SteamCMD appworkshop cache..."
+                        rm -f ${WORKSHOP_DIR}/appworkshop_$GAME_ID.acf
+                        
+                        echo -e "\tAttempting mod update/download via SteamCMD...\n"
+                        RunSteamCMD $modType $modID
+                    else
+                        echo -e "\n${GREEN}[UPDATE]:${NC} Mod is up-to-date: \"${CYAN}${modName}${NC}\" (${CYAN}${modID}${NC})"
+                    fi
+                    # Not A graceful solution but because we mount a shared folder for mods
+                    # The update mechanism was not moving the keys on all of the servers
+                    # This ensures that happens
+                    for keyFile in $(find $modDir -name "*.bikey" -type f); do
+                        keyFileName=$(basename ${keyFile})
+                        if [ ! -f "./keys/$keyFileName" ]; then # Checks if the file is present in the keys dir
+                            echo -e "\n${GREEN}[UPDATE]:${NC} Copying missing keyfile for $modID."
+                            cp "$keyFile" ./keys
+
+                        elif [ "$keyFile" -nt "./keys/$keyFileName" ]; then # Checks if the key file in the mods dir in newer then the one in keys for mods that dont version their key
+                            echo -e "\n${GREEN}[UPDATE]:${NC} Updating keyfile for $modID."
+                            cp "$keyFile" ./keys
+                        fi
+                    done
+                fi
+            done
+        fi
 
         # Check over key files for unconfigured optional mods' .bikey files
         for keyFile in $(find ./keys -name "*.bikey" -type f); do
